@@ -4,7 +4,9 @@
 #include <vector>
 #include <map>
 #include <deque>
-
+#include <chrono>
+#include <algorithm>
+#include <random>
 
 
 //	Implementation of the Gale Shapley Algorithm - Solution to the Stable Marriage Problem
@@ -35,11 +37,32 @@ map<string, vector<string> > womenPref =
 	{ "bertha" , { "xavier", "wyatt", "yancey", "victor", "zeus" }},
 	{ "clare" , { "wyatt", "xavier", "yancey", "zeus", "victor" }},
 	{ "diane" , { "victor", "zeus", "yancey", "xavier", "wyatt" }},
-	{ "erika" , { "", "wyatt", "zeus", "xavier", "victor" }}
+	{ "erika" , { "yancey", "wyatt", "zeus", "xavier", "victor" }}
 };
 
+//These two functions randomize the input for the preferences each time
+map<string, vector<string> > MenPreferenceInitializer(map<string, vector<string> > menPref)
+{
+	for (auto& man : menPref)
+	{
+		srand(unsigned(time(NULL)));
+		random_shuffle(man.second.begin(), man.second.end());
+	}
+	return menPref;
+}
+
+map<string, vector<string> > WomenPreferenceInitializer(map<string, vector<string> > womenPref)
+{
+	for (auto& woman : womenPref)
+	{
+		srand(unsigned(time(NULL)));
+		random_shuffle(woman.second.begin(), woman.second.end());
+	}
+	return womenPref;
+}
+
 //Initializes deque of all free men
-deque<string> freeMenInitializer(deque<string> freeMen, map<string, vector<string> > menPref)
+deque<string> FreeMenInitializer(deque<string> freeMen, map<string, vector<string> > menPref)
 {
 	for (auto const& man : menPref)
 	{
@@ -50,7 +73,7 @@ deque<string> freeMenInitializer(deque<string> freeMen, map<string, vector<strin
 }
 
 //Initializes map with the key being the man and the value being the amount of proposals 
-map<string, int> countInitializer(map<string, int> countProposals, deque<string> freeMen)
+map<string, int> CountInitializer(map<string, int> countProposals, deque<string> freeMen)
 {
 	for (auto const& man : freeMen)
 	{
@@ -61,7 +84,7 @@ map<string, int> countInitializer(map<string, int> countProposals, deque<string>
 
 //Will implement
 //m1 being the man proposing and m2 being the man currently matched with w
-bool wPrefersm1Overm2(string w, string m1, string m2, map<string, vector<string> > womenPref)
+bool WPrefersm1Overm2(string w, string m1, string m2, map<string, vector<string> > womenPref)
 {
 	for (auto const& man : womenPref[w])
 	{
@@ -76,27 +99,64 @@ bool wPrefersm1Overm2(string w, string m1, string m2, map<string, vector<string>
 	}
 }
 
+void PrintPreferences(map<string, vector<string> > menPref, map<string, vector<string> > womenPref)
+{
+
+	cout << "--- LIST OF PREFERENCES ---" << endl << endl;
+	for (auto const& manPref : menPref)
+	{
+		cout << "Man: " << manPref.first << " - ";
+		for (auto& woman : manPref.second)
+		{
+			cout << woman << " ";
+		}
+		cout << endl;
+	}
+	//Printing women and their preferences
+	for (auto const& womanPref : womenPref)
+	{
+		cout << "Woman: " << womanPref.first << " - ";
+		for (auto const& man : womanPref.second)
+		{
+			cout << man << " ";
+		}
+		cout << endl;
+	}
+	cout << endl;
+}
+
 
 //Main function to makes stable matches
-void stableMarriage(map<string, vector<string> > menPref, map<string, vector<string> > womenPref, deque<string> freeMen, map<string, int> countProposals)
+void StableMarriage(map<string, vector<string> > menPref, map<string, vector<string> > womenPref, deque<string> freeMen, map<string, int> countProposals)
 {
 	//Map containing pairs
 	map<string, string> matches;
 		
 	//Initialize all men as free
-	freeMen = freeMenInitializer(freeMen, menPref);
+	freeMen = FreeMenInitializer(freeMen, menPref);
 
 	//Count for men to see how many times they proposed
-	countProposals = countInitializer(countProposals, freeMen);
+	countProposals = CountInitializer(countProposals, freeMen);
+
+	menPref = MenPreferenceInitializer(menPref);
+	womenPref = WomenPreferenceInitializer(womenPref);
 	
+	PrintPreferences(menPref, womenPref);
+
+	cout << "--- STARTING MATCHING PROCESS ---" << endl << endl;
+	//Now recording elapsed time of program
+	auto start = chrono::steady_clock::now();
+
 	//While there are free men
 	while (freeMen.size() > 0)
 	{
 		//Get the first man free 
 		string m = freeMen.front();
 
+		//Get the amount of proposals the man has made
 		int count = countProposals[m];
 
+		//Get the woman up next in his preference list
 		string w = menPref[m][count];
 
 
@@ -108,7 +168,7 @@ void stableMarriage(map<string, vector<string> > menPref, map<string, vector<str
 			{
 				cout << m << " proposes to " << w << endl;
 				//Check to see if w prefers the man proposing over the man currently matched with w
-				if (wPrefersm1Overm2(w, m, matches[w], womenPref))
+				if (WPrefersm1Overm2(w, m, matches[w], womenPref))
 				{
 					cout << w << " accepts and matches with " << m << endl;
 					cout << matches[w] << " is now unmatched and will search for a new partner " << endl;
@@ -152,6 +212,10 @@ void stableMarriage(map<string, vector<string> > menPref, map<string, vector<str
 		countProposals[m]++;
 	}
 
+	//Marking time at the end of the algorithm
+	auto end = chrono::steady_clock::now();
+	double elapsedTime = double(chrono::duration_cast <chrono::nanoseconds>(end - start).count());
+
 	cout << endl << "----- SOLUTION -----" << endl;
 
 	//Print out matches
@@ -160,11 +224,13 @@ void stableMarriage(map<string, vector<string> > menPref, map<string, vector<str
 		cout << match.first << " is matched with " << match.second << endl;
 	}
 
+	cout << "Elapsed Time: " << elapsedTime << " nanoseconds" << endl;
+
 }
 
 int main()
 {
 	//Run algorithm
-	stableMarriage(menPref, womenPref, freeMen, countProposals);
+	StableMarriage(menPref, womenPref, freeMen, countProposals);
 
 }
