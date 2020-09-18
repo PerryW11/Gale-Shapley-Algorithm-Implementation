@@ -233,4 +233,5 @@ int main()
 	//Run algorithm
 	StableMarriage(menPref, womenPref, freeMen, countProposals);
 
+	return 0;
 }
