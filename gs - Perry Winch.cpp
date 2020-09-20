@@ -1,8 +1,7 @@
 #include <string>
 #include <iostream>
-#include <string>
 #include <vector>
-#include <map>
+#include <queue>
 #include <deque>
 #include <chrono>
 #include <algorithm>
@@ -16,222 +15,257 @@
 
 using namespace std;
 
-deque<string> freeMen;
 
-map<string, int> countProposals;
-
-//Men and their preferences	
-map<string, vector<string> > menPref =
+// Initialize list of preferences for each man and then randomize it dynamically
+vector< vector<int> > MenPreferenceInitializer(int num)
 {
-	{ "victor" , { "bertha", "amy", "diane", "erika", "clare" }},
-	{ "wyatt" , { "diane", "bertha", "amy", "clare", "erika" }},
-	{ "xavier" , { "bertha", "erika", "clare", "diane", "amy" }},
-	{ "yancey" , { "amy", "diane", "clare", "bertha", "erika" }},
-	{ "zeus" , { "bertha", "diane", "amy", "erika", "clare" }}
-};
 
-//Women and their preferences
-map<string, vector<string> > womenPref =
-{
-	{ "amy" , { "zeus", "victor", "wyatt", "yancey", "xavier" }},
-	{ "bertha" , { "xavier", "wyatt", "yancey", "victor", "zeus" }},
-	{ "clare" , { "wyatt", "xavier", "yancey", "zeus", "victor" }},
-	{ "diane" , { "victor", "zeus", "yancey", "xavier", "wyatt" }},
-	{ "erika" , { "yancey", "wyatt", "zeus", "xavier", "victor" }}
-};
+	vector< vector<int> > menPref(num);
 
-//These two functions randomize the input for the preferences each time
-map<string, vector<string> > MenPreferenceInitializer(map<string, vector<string> > menPref)
-{
-	for (auto& man : menPref)
+	for (int i = 0; i < num; i++)
 	{
-		srand(unsigned(time(NULL)));
-		random_shuffle(man.second.begin(), man.second.end());
+		for (int j = 0; j < num; j++)
+		{
+			menPref[i].push_back(j);
+		}
 	}
+
+	//Randomize each list of preference
+	for (int i = 0; i < num; i++)
+	{
+		random_device r;
+		seed_seq seed{ r(), r(), r(), r(), r(), r(), r(), r() };
+		mt19937 eng(seed);
+		shuffle(begin(menPref[i]), end(menPref[i]), eng);
+	}
+
 	return menPref;
+
 }
 
-map<string, vector<string> > WomenPreferenceInitializer(map<string, vector<string> > womenPref)
+//Initialize list of preferences for each woman and then randomize it dynamically
+vector< vector<int> > WomenPreferenceInitializer(int num)
 {
-	for (auto& woman : womenPref)
+
+	vector< vector<int> > womenPref(num);
+
+	for (int i = 0; i < num; i++)
 	{
-		srand(unsigned(time(NULL)));
-		random_shuffle(woman.second.begin(), woman.second.end());
+		for (int j = 0; j < num; j++)
+		{
+			womenPref[i].push_back(j);
+		}
 	}
+
+	//Randomize each list of preference
+	for (int i = 0; i < num; i++)
+	{
+		random_device r;
+		seed_seq seed{ r(), r(), r(), r(), r(), r(), r(), r() };
+		mt19937 eng(seed);
+		shuffle(begin(womenPref[i]), end(womenPref[i]), eng);
+	}
+
 	return womenPref;
+
 }
 
-//Initializes deque of all free men
-deque<string> FreeMenInitializer(deque<string> freeMen, map<string, vector<string> > menPref)
+//Initialize queue with each man being free initially
+queue<int> FreeMenInitializer(const vector< vector<int> >& menPref)
 {
-	for (auto const& man : menPref)
+	//priority_queue<int, vector<int>, greater<int> > freeMen;
+	queue<int> freeMen;
+
+	for (int i = 0; i < menPref.size(); i++)
 	{
-		freeMen.push_back(man.first);
+		freeMen.push(i);
 	}
 
 	return freeMen;
 }
 
-//Initializes map with the key being the man and the value being the amount of proposals 
-map<string, int> CountInitializer(map<string, int> countProposals, deque<string> freeMen)
+//Initialize each man having the amount of proposals made at 0
+vector<int> CountInitializer(queue<int>& freeMen)
 {
-	for (auto const& man : freeMen)
+
+	vector<int> countProposals(freeMen.size());
+
+	for (int i = 0; i < freeMen.size(); i++)
 	{
-		countProposals.insert(pair<string, int>(man, 0));
+		countProposals.push_back(0);
 	}
 	return countProposals;
 }
 
-//Will implement
-//m1 being the man proposing and m2 being the man currently matched with w
-bool WPrefersm1Overm2(string w, string m1, string m2, map<string, vector<string> > womenPref)
+//Inverse each list of preferences for each woman to make unstable match condition check O(1) 
+vector< vector<int> > InverseWomenPref(const vector< vector<int> >& womenPref, int num)
 {
-	for (auto const& man : womenPref[w])
+	vector< vector<int> > inverseWomenPref(num);
+	for (int i = 0; i < inverseWomenPref.size(); i++)
+		inverseWomenPref[i].resize(num);
+
+	//For each list of preferences
+	for (int i = 0; i < womenPref.size(); i++)
 	{
-		if (man == m1)
+		//for each element in the list of preference
+		for (int j = 0; j < womenPref[i].size(); j++)
 		{
-			return true;
-		}
-		if (man == m2)
-		{
-			return false;
+			//Inverse the man to be the index and the preference ranking as the value
+			int k = womenPref[i][j];
+			inverseWomenPref[i][k] = j;
 		}
 	}
+	return inverseWomenPref;
 }
 
-void PrintPreferences(map<string, vector<string> > menPref, map<string, vector<string> > womenPref)
+//Print out each list of preferences if desired
+void PrintPreferences(const vector< vector<int> >& menPref, const vector< vector<int> >& womenPref)
 {
 
-	cout << "--- LIST OF PREFERENCES ---" << endl << endl;
-	for (auto const& manPref : menPref)
+	std::cout << "--- LIST OF PREFERENCES ---" << endl << endl;
+	for (int i = 0; i < menPref.size(); i++)
 	{
-		cout << "Man: " << manPref.first << " - ";
-		for (auto& woman : manPref.second)
+		std::cout << "Man: " << i << " - ";
+
+		for (int j = 0; j < menPref[i].size(); j++)
 		{
-			cout << woman << " ";
+			std::cout << menPref[i][j] << " ";
 		}
-		cout << endl;
+
+		std::cout << endl;
+
 	}
 	//Printing women and their preferences
-	for (auto const& womanPref : womenPref)
+	for (int i = 0; i < womenPref.size(); i++)
 	{
-		cout << "Woman: " << womanPref.first << " - ";
-		for (auto const& man : womanPref.second)
+		std::cout << "Woman: " << i << " - ";
+		for (int j = 0; j < womenPref[i].size(); j++)
 		{
-			cout << man << " ";
+			std::cout << womenPref[i][j] << " ";
 		}
-		cout << endl;
+
+		std::cout << endl;
+
 	}
-	cout << endl;
+
+	std::cout << endl;
+
 }
 
 
 //Main function to makes stable matches
-void StableMarriage(map<string, vector<string> > menPref, map<string, vector<string> > womenPref, deque<string> freeMen, map<string, int> countProposals)
+void StableMarriage(int num)
 {
-	//Map containing pairs
-	map<string, string> matches;
-		
-	//Initialize all men as free
-	freeMen = FreeMenInitializer(freeMen, menPref);
 
-	//Count for men to see how many times they proposed
-	countProposals = CountInitializer(countProposals, freeMen);
 
-	menPref = MenPreferenceInitializer(menPref);
-	womenPref = WomenPreferenceInitializer(womenPref);
+	//Indexes represent the women and the value at the index is the man matched with her
+	vector<int> matches(num, -1);
 	
-	PrintPreferences(menPref, womenPref);
+	//Vector containing each man's list of preferences, indexes of menPref being the men
+	vector< vector<int> > menPref = MenPreferenceInitializer(num);
 
-	cout << "--- STARTING MATCHING PROCESS ---" << endl << endl;
-	//Now recording elapsed time of program
-	auto start = chrono::steady_clock::now();
+	//Vector containing each woman's list of preferences, indexes of womenPref being the women
+	const vector< vector<int> > womenPref = WomenPreferenceInitializer(num);
+
+	//Queue with all the free men
+	queue<int> freeMen = FreeMenInitializer(menPref);
+
+	//Amount of proposals made by each man, index representing the man
+	vector<int> countProposals = CountInitializer(freeMen);
+
+	//Inverse of the list of preferences for each woman, indexes being the woman
+	const vector< vector<int> > inverseWomenPref = InverseWomenPref(womenPref, num);
+
+	//PrintPreferences(menPref, womenPref);
+
+	//std::cout << "--- STARTING MATCHING PROCESS ---" << endl << endl;
+
+
+	//Now recording elapsed main algorithm now that pre-processing is done
+	auto startLoop = chrono::steady_clock::now();
 
 	//While there are free men
 	while (freeMen.size() > 0)
 	{
 		//Get the first man free 
-		string m = freeMen.front();
+		int m = freeMen.front();
 
 		//Get the amount of proposals the man has made
 		int count = countProposals[m];
 
-		//Get the woman up next in his preference list
-		string w = menPref[m][count];
+		//Get w based on the amount of proposals the man has made
+		int w = menPref[m][count];
 
-
-		//If there are any matches 
-		if (matches.size() > 0)
+		//If -1, the woman is free, and if anything else, then that's the man w is matched with
+		int m1 = matches[w];
+		
+		//If w is unmatched
+		if (m1 == -1)
 		{
+			//cout << "Woman " << w << " is initially unmatched and will match with Man " << m << endl;
+			
+			//m now matches with w
+			matches[w] = m;
 
-			if (matches.count(w) == 1)
-			{
-				cout << m << " proposes to " << w << endl;
-				//Check to see if w prefers the man proposing over the man currently matched with w
-				if (WPrefersm1Overm2(w, m, matches[w], womenPref))
-				{
-					cout << w << " accepts and matches with " << m << endl;
-					cout << matches[w] << " is now unmatched and will search for a new partner " << endl;
-
-					//Remove m from the freeMen deque
-					freeMen.pop_front();
-					//Add man who just got unmatched to freeMen deque
-					freeMen.push_front(matches[w]);
-					//Delete the pair in matches
-					matches.erase(w);
-					//Add new pair into matches
-					matches.insert({ w, m });
-				}
-				else
-				{
-					cout << w << " rejects " << m << " and stays with " << matches[w] << endl;
-				}
-			}
-			else
-			{
-				//w isn't in a match
-				cout << m << " proposes to " << w << endl;
-				cout << w << " accepts and matches with " << m << endl;
-				matches.insert({ w, m });
-
-				//Remove m from the freeMen deque
-				freeMen.pop_front();
-			}
+			//remove m from the queue of free men
+			freeMen.pop();
 		}
+		//If w prefers the man proposing vs the man she is matched with
+		else if (inverseWomenPref[w][m] < inverseWomenPref[w][m1])
+		{
+			//Match her with the new man
+			matches[w] = m;
+			//Remove m from the freeMen deque
+			freeMen.pop();
+			//Add man back to free men
+			freeMen.push(m1);
+			//cout << "Woman " << w << " leaves " << m1 << " for " << m << " leaving " << m1 << " free once more" << endl;
+			//auto end = chrono::steady_clock::now();
+			//double elapsedTime = double(chrono::duration_cast <chrono::nanoseconds>(end - start).count());
+			//std::cout << "Elapsed Time when replaced: " << elapsedTime << " nanoseconds" << endl;
+		}
+		//If she rejects the man proposing and stays with her current match
 		else
 		{
-			//first match
-			cout << m << " proposes to " << w << endl;
-			cout << w << " accepts and matches with " << m << endl;
-			matches.insert({ w, m });
-
-			//Remove m from the freeMen deque
-			freeMen.pop_front();
+			//cout << "Woman " << w << " rejects Man " << m << " and stays with Man " << m1 << endl;
 		}
-		//The man just proposed again so increase count
+
+		//Man just proposed so increase proposal count
 		countProposals[m]++;
+
 	}
 
-	//Marking time at the end of the algorithm
-	auto end = chrono::steady_clock::now();
-	double elapsedTime = double(chrono::duration_cast <chrono::nanoseconds>(end - start).count());
+	//Marking time at the end of the algorithm and printing it out
+	auto endLoop = chrono::steady_clock::now();
+	chrono::microseconds elapsedTime = chrono::duration_cast <chrono::microseconds>(endLoop - startLoop);
+	std::cout << elapsedTime.count() << std::endl;;
 
-	cout << endl << "----- SOLUTION -----" << endl;
+	//std::cout << endl << "----- SOLUTION -----" << endl;
 
 	//Print out matches
-	for (auto const& match : matches)
-	{
-		cout << match.first << " is matched with " << match.second << endl;
-	}
+	//for (int i = 0; i < matches.size(); i++)
+	//{
+	//	cout << "Man " << matches[i] << " is matched with Woman " << i << endl;
+	//}
 
-	cout << "Elapsed Time: " << elapsedTime << " nanoseconds" << endl;
+	
 
 }
 
-int main()
-{
-	//Run algorithm
-	StableMarriage(menPref, womenPref, freeMen, countProposals);
 
-	return 0;
+int main(int argc, char* argv[])
+{
+
+	if (argc == 2)
+	{
+		int num = stoi(argv[1]);
+
+		//Run algorithm
+		StableMarriage(num);
+
+		return 0;
+	}
+
+	return 1;
+
 }
