@@ -1,0 +1,14 @@
+# model.gpt
+# Gale-Shapley efficient implementation should be O(n^2)
+y(x) = a0 + a1 * x + a2 * x**2
+# Initial parameter values:
+a0 = 1
+a1 = 0.1
+a2 = 1
+# Perform the fit
+fit y(x) "data.txt" via a0, a1, a2
+# Draw the plot
+set xlabel "Input size"
+set ylabel "Time (microsecs.)"
+set nokey
+plot y(x), "data.txt"
